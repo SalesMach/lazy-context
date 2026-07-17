@@ -1,0 +1,25 @@
+{
+  "agents": {
+    "defaults": {
+      "compaction": {
+        "mode": "default",
+        "reserveTokens": 8000,
+        "keepRecentTokens": 10000,
+        "maxHistoryShare": 0.3,
+        "customInstructions": "Preserve user identity, decisions, configurations, and next steps. Remove verbose explanations, redundant confirmations, and old tool outputs. Keep last 10 messages intact for immediate context."
+      }
+    }
+  },
+  "mcp": {
+    "servers": {
+      "example-server": {
+        "enabled": false,
+        "command": "npx",
+        "args": ["--package=example-mcp@latest", "example-mcp"],
+        "env": {
+          "API_TOKEN": "your-token-here"
+        }
+      }
+    }
+  }
+}
