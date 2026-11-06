@@ -2,7 +2,7 @@
 
 **Fase:** mapeamento e análise (sem construção ainda)
 **Data:** 2026-11-06
-**Insumo:** 16 telas do diagnóstico "Maturidade da gestão de frota" da Cobli (concorrente), navegado via WhatsApp Business → Safari mobile.
+**Insumo:** 19 telas do diagnóstico "Maturidade da gestão de frota" da Cobli (concorrente), navegado via WhatsApp Business → Safari mobile, incluindo a página de resultado.
 
 ---
 
@@ -15,9 +15,9 @@
 | 01 | Conhecendo a sua empresa | 8 | não visto | Q3, Q6, Q7, Q8 |
 | 02 | Manutenção | 4 | ~2 min | abertura, Q1, Q3, Q4 |
 | 03 | Multas e sinistros | 3 | ~2 min | abertura, Q2 |
-| 04 | Eficiência | 7 | ~3 min | abertura, Q1, Q2, Q4, Q5, Q6 |
+| 04 | Eficiência | 7 | ~3 min | abertura, Q1, Q2, Q4, Q5, Q6, Q7 |
 
-Total: **22 perguntas**, ~8 a 9 minutos. Nenhuma tela de captura de contato nem de resultado foi enviada, então não dá para afirmar onde ficam o cadastro e o score.
+Total: **22 perguntas**, ~8 a 9 minutos. A última pergunta tem botão "Concluir" e leva direto à página de resultado. Não há tela de captura de contato entre o fim do questionário e o resultado, o que sugere que a identificação do lead acontece antes (no WhatsApp ou na entrada do link).
 
 ### 1.2 Padrões de UX e mecânica
 
@@ -69,8 +69,9 @@ Q1 e Q3 não enviadas.
 | 4 | Vocês costumam fornecer feedbacks imediatos sobre erros cometidos pelos motoristas? | Sempre · Às vezes · Preferimos posteriormente · Não temos cultura de feedback |
 | 5 | Você sabe se os motoristas costumam deixar o motor ligado enquanto estão parados? | Sim, gostam de ficar ligado · Sim, mas não sei por que · Às vezes, ocasiões isoladas · Nunca reparei |
 | 6 | Os motoristas podem utilizar o veículo para uso particular fora do horário? | Não, ficam na empresa · Às vezes precisam emprestados · Sim, levam para casa |
+| 7 | Você tem o controle de quais motoristas usam determinados veículos? | Sim · Não (+ botão "Concluir") |
 
-Q3 e Q7 não enviadas.
+Q3 não enviada.
 
 ### 1.4 Ramificação observada no concorrente
 
@@ -80,6 +81,23 @@ Há evidência de **pelo menos uma rota condicional**: a Q4 da etapa 2 ("Por qua
 - "Outro(s)" na pergunta de maior gasto abra campo livre.
 
 Fora isso, o fluxo parece majoritariamente linear.
+
+### 1.5 Página de resultado (observada)
+
+Sequência da página, de cima para baixo:
+
+1. Ilustração da etapa 4 reaproveitada.
+2. "O nível de maturidade da sua operação é **MÉDIO**", com barra de progresso laranja em ~50%. A escala global parece ter três níveis (Baixo · Médio · Alto), coerente com as cores da legenda.
+3. "O que isso quer dizer?": parágrafo genérico do nível ("Você já consegue ter um bom controle da sua operação, mas existem custos que podem ser reduzidos... Considere adotar uma plataforma inteligente para a gestão de frotas").
+4. "Sua performance em cada pilar da maturidade de frota": gráfico com três pilares (Manutenção · Multas e sinistros · Eficiência) e legenda Ruim / Bom / Ótimo. **A imagem do gráfico estava quebrada no mobile** (ícone de "?"), então o lead não viu o resultado por pilar.
+5. "Seu ponto forte de gestão é": três ícones (Manutenção, Multas e sinistros, Eficiência), com o ponto forte destacado em azul (Eficiência) e os demais em cinza. O destaque é sutil e fácil de não perceber.
+6. "Próximos passos para aumentar a sua eficiência": texto que começa com "Considere adotar uma plataforma..." (cortado na tela).
+
+Conclusões sobre o modelo da Cobli:
+
+- **A etapa 1 não pontua.** Só Manutenção, Multas e sinistros e Eficiência viram pilares. "Conhecendo a sua empresa" é perfil e qualificação, exatamente a separação proposta na seção 3.1.
+- Escala global de três níveis e escala por pilar de três faixas (Ruim/Bom/Ótimo).
+- Resultado é estático por nível. Não cita nenhuma resposta específica do lead.
 
 ---
 
@@ -104,6 +122,11 @@ Fora isso, o fluxo parece majoritariamente linear.
 7. **Sem cobertura de compliance e documentação.** CNH, licenciamento, indicação de condutor em multas, ANTT, tacógrafo e seguro são dores recorrentes e geram urgência, especialmente em frotas pesadas.
 8. **Manutenção rasa.** Falta pneus (segundo maior custo em pesados), checklist diário, oficina própria vs terceira, tempo de veículo parado, disponibilidade da frota.
 9. **Nenhum indicador financeiro de gestão.** Custo por km, custo por veículo, orçamento vs realizado. É a pergunta que mais separa frota gerenciada de frota "apagando incêndio" e é o coração da proposta da Nextfleet.
+10. **Resultado genérico.** O texto do nível e os "próximos passos" são iguais para todo mundo que cai em "Médio". Nenhuma frase usa uma resposta real do lead, então a sensação de diagnóstico personalizado se perde justamente na tela que deveria gerar o "aha".
+11. **Gráfico por pilar quebrado no mobile.** A única visualização com valor individual não carregou. Além do bug, mostra o risco de depender de imagem gerada no servidor; o resultado da Nextfleet deve ser renderizado em HTML/SVG.
+12. **Escala curta demais.** Três níveis globais e três faixas por pilar colocam a maioria das PMEs em "Médio", o que não cria urgência nem diferencia leads para o comercial.
+13. **Ponto forte mal comunicado.** Mostrar os três pilares e destacar um só pela cor do ícone é pouco legível. E só elogiar não vende: falta o "ponto mais frágil", que é onde está a dor.
+14. **Sem CTA concreto no fim.** "Considere adotar uma plataforma" não oferece conversa, material nem contato. Para a Nextfleet, o fim do diagnóstico é o momento de maior intenção e precisa de um próximo passo claro (agendar conversa, receber relatório em PDF, falar no WhatsApp).
 
 ---
 
@@ -217,7 +240,7 @@ Com as rotas, o lead responde entre **18 e 26 perguntas** de um banco de ~40, ma
 
 ### 3.5 Saídas
 
-**Para o lead:** página de resultado com nível global, radar/barras por pilar, dois ou três achados em linguagem de dor ("Você não sabe quanto gasta com combustível por veículo, e combustível é seu maior custo") e um próximo passo por pilar. Captura de contato antes do resultado (gate) ou progressiva, a decidir.
+**Para o lead:** página de resultado com nível global, barras por pilar renderizadas em HTML (sem imagem externa), **ponto forte e ponto mais frágil** nomeados, dois ou três achados em linguagem de dor montados a partir das respostas reais ("Você não sabe quanto gasta com combustível por veículo, e combustível é seu maior custo") e um próximo passo por pilar. Fechar com CTA único e concreto (agendar conversa ou receber o relatório completo). Captura de contato antes do resultado (gate) ou progressiva, a decidir; a Cobli aparentemente identifica o lead antes de começar, via WhatsApp.
 
 **Para o comercial (ficha do lead):** perfil da frota, rota percorrida, score por pilar, respostas de M6 em destaque, sinais de urgência e sugestão de abordagem. Idealmente entra no CRM com os campos já estruturados.
 
@@ -231,7 +254,8 @@ Com as rotas, o lead responde entre **18 e 26 perguntas** de um banco de ~40, ma
 4. **Canal.** WhatsApp como a Cobli, landing page, ou ambos. Define formato (uma pergunta por tela, mobile-first).
 5. **Integração com CRM** e quem recebe o lead (SDR, closer, automação).
 6. **Nomes dos níveis e tom** do resultado (consultivo vs provocativo).
-7. **Perguntas não vistas da Cobli** (E1 Q1-2-4-5, E2 Q2, E3 Q1 e Q3, E4 Q3 e Q7). Se o cliente tiver o fluxo completo, vale fechar o mapeamento antes do desenho final.
+7. **Perguntas não vistas da Cobli** (E1 Q1-2-4-5, E2 Q2, E3 Q1 e Q3, E4 Q3). Se o cliente tiver o fluxo completo, vale fechar o mapeamento antes do desenho final.
+8. **Formato de entrega do resultado.** Só página, ou página + PDF/WhatsApp com o relatório, que também serve de pretexto para o SDR fazer o primeiro contato.
 
 ---
 
