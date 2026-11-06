@@ -10,6 +10,7 @@
     shield: '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>',
     driver: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/><circle cx="12" cy="15.5" r="0.6"/></svg>',
     target: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg>',
+    calc: '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><rect x="8" y="6" width="8" height="3"/><path d="M8 13h2M12 13h2M16 13h0M8 17h2M12 17h2M16 17h0"/></svg>',
   };
 
   const state = { answers: {}, pos: 0, showLead: false, devOpen: false };
@@ -172,6 +173,8 @@
     let opts = '';
     if (q.type === 'text') {
       opts = `<input class="text-input" type="text" id="txt" placeholder="Digite aqui" value="${esc(v || '')}" autocomplete="off">`;
+    } else if (q.type === 'number') {
+      opts = `<div class="num-wrap"><input class="text-input" type="text" inputmode="numeric" id="txt" placeholder="${esc(q.placeholder || '')}" value="${esc(v || '')}" autocomplete="off"><span class="unit">${esc(q.unit || '')}</span></div>`;
     } else {
       opts = `<div class="options">${q.options.map(o => {
         const sel = Array.isArray(v) ? v.includes(o.v) : v === o.v;
@@ -179,7 +182,7 @@
       }).join('')}</div>`;
     }
     const needsBtn = q.type !== 'single';
-    const canGo = q.type === 'text' ? true : Array.isArray(v) && v.length > 0;
+    const canGo = (q.type === 'text' || q.type === 'number') ? true : Array.isArray(v) && v.length > 0;
     const pad = String(cur.idx).padStart(2, '0') + '/' + String(cur.total).padStart(2, '0');
     return `<main class="screen">
       <div class="counter">${pad}</div>
@@ -193,80 +196,77 @@
 
   function renderResult(a) {
     const s = computeScores(a);
-    const lvlIdx = LEVELS.indexOf(s.level);
     const found = FINDINGS.filter(f => f.when(a)).sort((x, y) => y.prio - x.prio);
     const risks = found.filter(f => f.kind === 'risk').slice(0, 3);
     const goods = found.filter(f => f.kind === 'good').slice(0, 1);
     const recPillars = [s.weak, s.secondWeak].filter(Boolean);
     const lead = leadScore(a, s);
     const routes = activeRoutes(a);
-
-    const pillarRows = s.pillars.map(p => {
-      if (p.score === null) return `<div class="pillar-row"><div class="name">${esc(p.name)}</div><div class="track"></div><div class="band" style="color:#b8bfcc">Não avaliado</div></div>`;
-      const b = band(p.score);
-      return `<div class="pillar-row"><div class="name">${esc(p.name)}</div><div class="track"><i class="${b.cls}" style="width:${p.score}%"></i></div><div class="band ${b.cls}">${b.name}</div></div>`;
-    }).join('');
+    const rep = Report.render(a, s, lead);
 
     const nextSteps = recPillars.map(p => {
       const mods = MODULES[p.id] || [];
-      return `<div class="card"><h3>${esc(p.name)}: ${esc(band(p.score).name.toLowerCase())}</h3><p class="lead">${esc(pillarAdvice(p.id, a))}</p><div class="two" style="margin-top:12px">${mods.slice(0, 2).map(m => `<div class="module-card"><div class="head">${esc(m.name)}</div><div class="body">${esc(m.text)}</div></div>`).join('')}</div></div>`;
+      const loss = rep.imp.byPillar[p.id];
+      return `<div class="card"><h3>${esc(p.name)}: ${esc(band(p.score).name.toLowerCase())}${loss && loss.hi ? ` <span class="money">até ${esc(rep.fmtK(loss.hi))}/ano</span>` : ''}</h3><p class="lead">${esc(pillarAdvice(p.id, a))}</p><div class="two" style="margin-top:12px">${mods.slice(0, 2).map(m => `<div class="module-card"><div class="head">${esc(m.name)}</div><div class="body">${esc(m.text)}</div></div>`).join('')}</div></div>`;
     }).join('');
 
-    const strongMods = s.strong ? (MODULES[s.strong.id] || []).slice(0, 1) : [];
+    const findingMoney = f => { const it = rep.imp.items.find(i => (f.prio >= 95 && i.key === 'fuel_control') || (f.prio === 92 && i.key === 'corrective') || (f.prio === 90 && i.key === 'nic') || (f.prio === 88 && i.key === 'docs') || (f.prio === 80 && i.key === 'private') || (f.prio === 78 && i.key === 'tires') || (f.prio === 82 && i.key === 'admin') || (f.prio === 68 && i.key === 'idle') || (f.prio === 72 && i.key === 'rental')); return it ? ` <span class="money">${esc(rep.range(it.lo, it.hi))}/ano</span>` : ''; };
 
-    return `<main class="screen result">
-      <div class="hero-level">
-        <div class="label">O nível de maturidade da sua operação é</div>
-        <div class="level">${esc(s.level.name)}</div>
-        <div class="bar"><i style="width:${s.global}%"></i></div>
-        <div class="levels-scale">${LEVELS.map((l, i) => `<span style="${i === lvlIdx ? 'color:var(--nf-blue)' : ''}">${l.name}</span>`).join('')}</div>
-        <div class="score">${s.global} de 100 pontos</div>
-      </div>
-      <div class="card"><h3>O que isso quer dizer?</h3><p class="lead">${esc(s.level.text)}</p></div>
-
-      <div class="card"><h3>Sua performance em cada pilar</h3>${pillarRows}<div class="legend"><span class="bad">Frágil</span><span class="warn">Em evolução</span><span class="ok">Consolidado</span></div></div>
-
-      <div class="two">
-        <div class="card" style="margin:0"><h3 style="font-size:14px;color:#8a93a3;text-transform:uppercase;letter-spacing:.05em">Ponto forte</h3><div style="font-size:20px;font-weight:700;color:var(--nf-ok)">${s.strong ? esc(s.strong.name) : '-'}</div>${strongMods.length ? `<p class="lead" style="font-size:13px;margin-top:6px">Mantenha com o módulo <b>${esc(strongMods[0].name)}</b>.</p>` : ''}</div>
-        <div class="card" style="margin:0"><h3 style="font-size:14px;color:#8a93a3;text-transform:uppercase;letter-spacing:.05em">Ponto mais frágil</h3><div style="font-size:20px;font-weight:700;color:var(--nf-bad)">${s.weak ? esc(s.weak.name) : '-'}</div><p class="lead" style="font-size:13px;margin-top:6px">É onde está a maior oportunidade de redução de gastos.</p></div>
-      </div>
+    return `<main class="screen result wide">
+      ${rep.html}
 
       <div class="card"><h3>O que encontramos nas suas respostas</h3>
         <ul class="findings">
-          ${risks.map((f, i) => `<li><span class="n">${i + 1}</span><span>${esc(f.text(a))}</span></li>`).join('')}
+          ${risks.map((f, i) => `<li><span class="n">${i + 1}</span><span>${esc(f.text(a))}${findingMoney(f)}</span></li>`).join('')}
           ${goods.map(f => `<li><span class="n good">&#10003;</span><span>${esc(f.text(a))}</span></li>`).join('')}
           ${!risks.length && !goods.length ? '<li><span class="n good">&#10003;</span><span>Não identificamos alertas críticos nas suas respostas.</span></li>' : ''}
         </ul>
       </div>
 
-      <h3 style="margin:26px 0 4px;font-size:21px;text-align:center">Próximos passos para a sua frota</h3>
-      <p style="text-align:center;color:#6b7383;margin:0 0 6px;font-size:14px">Começando pelos pilares mais frágeis</p>
+      <h3 class="sec-title">Plano de 90 dias para a sua frota</h3>
+      <p class="sec-sub">Ações em ordem de urgência, com o módulo NEXTfleet que sustenta cada uma</p>
+      ${rep.timeline}
+
+      <h3 class="sec-title">Por onde começar</h3>
+      <p class="sec-sub">Os dois pilares com maior perda estimada</p>
       ${nextSteps}
 
       <div class="cta">
-        <h3>Quer ver esses números na sua frota?</h3>
-        <p>Um especialista NEXTfleet monta, em 30 minutos, uma simulação de redução de gastos com base neste diagnóstico.</p>
+        <h3>Quer esses números com os dados reais da sua frota?</h3>
+        <p>Um especialista NEXTfleet monta, em 30 minutos, a simulação de redução de gastos com o seu histórico de abastecimento, oficinas e multas. 47% das frotas recuperam o investimento em menos de um ano.</p>
         <button class="btn primary" data-act="toast" data-msg="Protótipo: aqui abre o agendamento ou o WhatsApp do comercial">Falar com um especialista</button>
         <button class="btn ghost" data-act="toast" data-msg="Protótipo: aqui envia o relatório completo em PDF">Receber o relatório completo</button>
       </div>
+
+      <details class="method"><summary>Como calculamos</summary>
+        <p>Cada valor é uma faixa: o limite inferior usa a hipótese conservadora e o superior, a provável. Nível de confiança das fontes: <b>A</b> oficial, <b>B</b> pesquisa com amostra, <b>C</b> estimativa de mercado, <b>D</b> média Nextfleet por tipo de veículo. Informe seus números reais para substituir as médias.</p>
+        <ul>${rep.usedSrc.map(k => SOURCES[k] ? `<li><b class="lvl ${SOURCES[k].level}">${SOURCES[k].level}</b> ${esc(SOURCES[k].text)}</li>` : '').join('')}</ul>
+        <p>Média de mercado por porte: estimativa Nextfleet baseada em Arval 2025, pesquisas setoriais e respostas acumuladas neste diagnóstico, recalibrada conforme a base cresce.</p>
+      </details>
 
       <details class="lead-sheet" ${state.showLead ? 'open' : ''} id="leadsheet">
         <summary><span>Ficha do lead (visão do comercial)</span><span class="tag">interno</span></summary>
         <h4>Temperatura</h4>
         <span class="temp ${lead.temp}">${esc(lead.label)} &middot; ${lead.pts} pts</span>
         <ul class="reasons">${lead.reasons.map(r => `<li>${esc(r)}</li>`).join('') || '<li>Sem sinais fortes de compra.</li>'}</ul>
+        <h4>Impacto estimado (argumento de venda)</h4>
+        <div class="kv"><div><b>Perda anual estimada</b>${esc(rep.range(rep.imp.total.lo, rep.imp.total.hi))}</div><div><b>Maior item</b>${rep.imp.items.length ? esc(rep.imp.items.slice().sort((x, y) => y.hi - x.hi)[0].label) : '—'}</div><div><b>Índice de tecnologia</b>${rep.idx.tech ?? '—'}</div><div><b>Índice de processo</b>${rep.idx.proc ?? '—'}</div><div><b>Quadrante</b>${esc(rep.idx.quadrant)}</div><div><b>Vs média do porte</b>${s.global - rep.mkt.global >= 0 ? '+' : ''}${s.global - rep.mkt.global} pts</div></div>
         <h4>Perfil da frota</h4>
         <div class="kv">${['segmento', 'tamanho', 'composicao', 'propriedade', 'vinculo', 'abrangencia', 'cargo'].filter(k => a[k] !== undefined).map(k => `<div><b>${esc(QUESTIONS.find(q => q.id === k).text)}</b>${esc(labelOf(k, a[k]))}</div>`).join('')}</div>
+        <h4>Números informados</h4>
+        <div class="kv">${[['km_mes', 'Km por veículo por mês'], ['gasto_comb', 'Combustível (R$ por mês)'], ['gasto_manut', 'Manutenção (R$ por mês)']].map(([k, l]) => `<div><b>${l}</b>${a[k] ? esc(a[k]) : 'não informado'}</div>`).join('')}</div>
         <h4>Rotas percorridas</h4>
         <div class="routes">${routes.map(r => `<span>${esc(r)}</span>`).join('') || '<span>Fluxo padrão</span>'}</div>
         <h4>Dores e momento de compra</h4>
         <div class="kv">${['maior_gasto', 'maior_dor', 'motivo_agora', 'prazo', 'decisor', 'sistema_nome', 'sistema_falta', 'tempo_consolidando'].filter(k => a[k] !== undefined && a[k] !== '').map(k => `<div><b>${esc(QUESTIONS.find(q => q.id === k).text)}</b>${esc(labelOf(k, a[k]))}</div>`).join('')}</div>
         <h4>Score por pilar</h4>
-        <div class="kv">${s.pillars.map(p => `<div><b>${esc(p.name)}</b>${p.score === null ? 'Não avaliado' : p.score + ' / 100 · ' + band(p.score).name + ' (' + p.answered + ' resp.)'}</div>`).join('')}<div><b>Global</b>${s.global} / 100 · ${esc(s.level.name)}</div></div>
+        <div class="kv">${s.pillars.map(p => `<div><b>${esc(p.name)}</b>${p.score === null ? 'Não avaliado' : p.score + ' / 100 · ' + band(p.score).name + ' · média ' + rep.mkt.pillars[p.id]}</div>`).join('')}<div><b>Global</b>${s.global} / 100 · ${esc(s.level.name)} · média ${rep.mkt.global}</div></div>
+        <h4>Riscos</h4>
+        <div class="routes">${rep.rk.filter(r => r.level !== 'green').map(r => `<span class="${r.level}">${esc(r.title)}</span>`).join('') || '<span>Nenhum</span>'}</div>
         <h4>Sugestão de abordagem</h4>
         <p style="font-size:14px;line-height:1.55;margin:0">${esc(approach(a, s, lead))}</p>
         <h4>Exportação (JSON)</h4>
-        <pre class="json">${esc(JSON.stringify({ answers: a, scores: { global: s.global, level: s.level.name, pillars: Object.fromEntries(s.pillars.map(p => [p.id, p.score])) }, lead: { temp: lead.temp, pts: lead.pts }, routes }, null, 2))}</pre>
+        <pre class="json">${esc(JSON.stringify({ answers: a, scores: { global: s.global, level: s.level.name, pillars: Object.fromEntries(s.pillars.map(p => [p.id, p.score])) }, market: rep.mkt, indices: rep.idx, impact: { total: rep.imp.total, items: rep.imp.items.map(i => ({ key: i.key, lo: i.lo, hi: i.hi })) }, lead: { temp: lead.temp, pts: lead.pts }, routes }, null, 2))}</pre>
       </details>
 
       <p class="footer-note">Protótipo de validação · <img src="assets/logo-nextfleet.png" alt="NEXTfleet"> · tecnologia · software · gestão · frotas</p>
@@ -338,7 +338,7 @@
     const txt = $app.querySelector('#txt');
     if (txt) {
       txt.focus();
-      txt.addEventListener('input', () => { const seq = buildSequence(state.answers); const cur = seq[state.pos]; state.answers[cur.q.id] = txt.value; });
+      txt.addEventListener('input', () => { const seq = buildSequence(state.answers); const cur = seq[state.pos]; state.answers[cur.q.id] = txt.value; const b = $app.querySelector('.actions .btn.primary'); if (b && cur.q.optional) b.textContent = txt.value.trim() ? 'Continuar' : 'Pular'; });
       txt.addEventListener('keydown', e => { if (e.key === 'Enter') go(+1); });
     }
     const ls = $app.querySelector('#leadsheet');
@@ -366,7 +366,7 @@
   function go(delta) {
     const seq = buildSequence(state.answers);
     const cur = seq[state.pos];
-    if (delta > 0 && cur.kind === 'question' && cur.q.type !== 'text' && !cur.q.optional) {
+    if (delta > 0 && cur.kind === 'question' && cur.q.type !== 'text' && cur.q.type !== 'number' && !cur.q.optional) {
       const v = state.answers[cur.q.id];
       if (v === undefined || (Array.isArray(v) && !v.length)) return;
     }

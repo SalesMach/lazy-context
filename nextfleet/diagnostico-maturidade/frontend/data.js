@@ -42,7 +42,10 @@ const STEPS = [
   { id: 'motoristas',   num: '06', title: 'Condutores',
     desc: 'Uso dos veículos, comportamento ao volante e cultura de feedback.',
     icon: 'driver' },
-  { id: 'momento',      num: '07', title: 'Prioridades',
+  { id: 'numeros',      num: '07', title: 'Seus números',
+    desc: 'Três perguntas opcionais. Se você souber os valores, o relatório calcula as perdas com os seus números em vez de médias de mercado.',
+    icon: 'calc' },
+  { id: 'momento',      num: '08', title: 'Prioridades',
     desc: 'Para fechar, o que mais pesa hoje e o que você gostaria de resolver primeiro.',
     icon: 'target' },
 ];
@@ -426,7 +429,14 @@ const QUESTIONS = [
       { v: 'nao',     label: 'Não', pts: 0 },
     ] },
 
-  // ---------- 07 PRIORIDADES (comercial, sem pontuação) ----------
+  // ---------- 07 SEUS NÚMEROS (opcionais, alimentam o motor de impacto) ----------
+  { id: 'km_mes', step: 'numeros', text: 'Quantos quilômetros, em média, cada veículo roda por mês?', hint: 'Opcional. Se não souber, usamos a média do seu tipo de frota.', type: 'number', unit: 'km por veículo / mês', optional: true, short: true, placeholder: 'Ex.: 3000' },
+  { id: 'gasto_comb', step: 'numeros', text: 'Quanto a frota gasta com combustível por mês?', hint: 'Opcional. Valor total da frota, em reais.', type: 'number', unit: 'R$ por mês', optional: true, short: true, placeholder: 'Ex.: 85000',
+    showIf: a => a.comb_controle !== 'nenhum' },
+  { id: 'gasto_manut', step: 'numeros', text: 'Quanto a frota gasta com manutenção por mês?', hint: 'Opcional. Peças, mão de obra e pneus, em reais.', type: 'number', unit: 'R$ por mês', optional: true, short: true, placeholder: 'Ex.: 30000',
+    showIf: a => a.man_resp === 'sim' || R.rented(a) },
+
+  // ---------- 08 PRIORIDADES (comercial, sem pontuação) ----------
   { id: 'maior_gasto', step: 'momento', text: 'Qual é o maior gasto da sua frota hoje?', type: 'single',
     options: [
       { v: 'combustivel', label: 'Combustível' },
@@ -560,6 +570,7 @@ const PERSONAS = {
     man_resp: 'sim', man_tipo: 'corretiva', man_motivo: 'esqueci', man_oficina: 'ondeder', man_checklist: 'nao', man_parado: 'nao',
     multas_conhec: 'parcial', multas_indicacao: 'asvezes', docs_venc: 'ninguem', sinistros: '1a3', seguro: 'parcial',
     cond_feedback: 'asvezes', cond_comportamento: 'reclamacao', uso_particular: 'casa', uso_regra: 'nada', quem_usa: 'manual',
+    km_mes: '2800', gasto_comb: '18000',
     maior_gasto: 'combustivel', maior_dor: 'gasto_onde', motivo_agora: 'custo', prazo: '3m', decisor: 'eu',
   },
   'Transportadora pesada, reativa': {
@@ -569,6 +580,7 @@ const PERSONAS = {
     man_resp: 'sim', man_tipo: 'corretiva', man_motivo: 'fornecedor', man_oficina: 'propria', man_pneus: 'troca', man_checklist: 'papel', man_parado: 'estimo',
     multas_conhec: 'exato', multas_indicacao: 'asvezes', docs_venc: 'planilha', jornada: 'parcial', sinistros: '4a10', seguro: 'autogestao',
     cond_feedback: 'depois', cond_comportamento: 'telemetria', uso_particular: 'nao', quem_usa: 'sistema',
+    km_mes: '8500', gasto_comb: '2100000', gasto_manut: '260000',
     maior_gasto: 'combustivel', maior_dor: 'corretiva', motivo_agora: 'custo', prazo: 'avaliando', decisor: 'diretoria', sistema_nome: 'Rastreador + planilhas',
   },
   'Serviços de campo, frota locada': {
@@ -598,4 +610,106 @@ const PERSONAS = {
     cond_feedback: 'nao', uso_particular: 'casa', quem_usa: 'nao',
     maior_gasto: 'naosei', maior_dor: 'naosei_gasto', prazo: 'semprazo',
   },
+};
+
+
+/* =====================================================================
+   MOTOR DE IMPACTO · constantes (ver 02-fontes-e-benchmarks.md)
+   Nível de confiança: A oficial · B pesquisa · C estimativa de mercado · D default Nextfleet
+   ===================================================================== */
+const FLEET_SIZE_REP = { '1_5': 3, '6_20': 12, '21_50': 35, '51_150': 90, '151_500': 300, '500': 700 };
+const FLEET_SIZE_LABEL = { '1_5': '1 a 5 veículos', '6_20': '6 a 20 veículos', '21_50': '21 a 50 veículos', '51_150': '51 a 150 veículos', '151_500': '151 a 500 veículos', '500': 'mais de 500 veículos' };
+
+const FUEL = { diesel: 7.31, gasolina: 6.48 }; // ANP, semana 25 a 31/10/2026 (A)
+
+// defaults por tipo de veículo (D, a validar com a base de clientes Nextfleet)
+const VEHICLE = {
+  leves:    { label: 'Leves',           km: 2500, kml: 11,  fuel: 'gasolina', manut: 350,  costDay: [150, 250],  cpk: [1.20, 1.80], tires: 0 },
+  vans:     { label: 'Utilitários',     km: 3000, kml: 9,   fuel: 'diesel',   manut: 500,  costDay: [200, 300],  cpk: [1.40, 2.00], tires: 0 },
+  vuc:      { label: 'VUC',             km: 4000, kml: 7,   fuel: 'diesel',   manut: 900,  costDay: [350, 500],  cpk: [2.20, 3.00], tires: 4000 },
+  pesados:  { label: 'Pesados',         km: 8000, kml: 2.5, fuel: 'diesel',   manut: 2500, costDay: [720, 720],  cpk: [5.50, 7.00], tires: 16000 },
+  carretas: { label: 'Carretas',        km: 9000, kml: 2.2, fuel: 'diesel',   manut: 3000, costDay: [720, 736],  cpk: [6.00, 7.50], tires: 20000 },
+  motos:    { label: 'Motos',           km: 2500, kml: 30,  fuel: 'gasolina', manut: 150,  costDay: [60, 100],   cpk: [0.45, 0.70], tires: 0 },
+  onibus:   { label: 'Ônibus',          km: 6000, kml: 2.8, fuel: 'diesel',   manut: 2000, costDay: [600, 720],  cpk: [6.00, 7.70], tires: 14000 },
+  maquinas: { label: 'Máquinas',        hours: 180, lph: 12, fuel: 'diesel',  manut: 3000, costDay: [0, 0],      cpk: [0, 0], tires: 0 },
+};
+
+const IMPACT = {
+  fuelLossNoControl:   [0.05, 0.10],  // C Geotab "até 10%"
+  fuelLossBasic:       [0.02, 0.05],  // C
+  fuelLossComplete:    [0.00, 0.02],  // D
+  idleLph:             { light: [1, 2], heavy: [3, 5] }, // B/C Geotab, Golfleet, EPA
+  idleHoursPerDay:     1, idleDays: 250,
+  correctiveOvercost:  [0.30, 0.65],  // C DOE +30%, fornecedor +65%
+  unknownMaintOver:    [0.15, 0.30],  // D
+  downDays:            { corretiva: 12, naosei: 8, preventiva: 5, sim: 4 }, // D
+  tiresSaving:         [0.20, 0.25],  // C
+  finesPerVehicle:     4, fineAvg: 170, // C Portal Multas
+  nicShare:            0.20,          // C ; dobro = A (Lei 14.229)
+  indirectFine:        [1, 2],        // C Infratrack (3 a 7x total)
+  docsProb:            [0.10, 0.237], // A regional Detran-SP Campinas 23,7%
+  docsCost:            293.47 + 422.62 + 3 * 42.26, // A CTB + Detran-SP 2026
+  claimsPerVehicle:    0.15,          // D quando não sabe
+  claimCost:           { light: [5000, 15000], heavy: [15000, 41400] }, // C / A CNT sem vítima
+  claimsAvoidable:     0.22,          // B Verizon 2025
+  adminHours:          { menos1: 50, '1a3': 100, mais3: 200, nao: 30 }, // C Edenred
+  adminHourCost:       60,            // C
+  privateUseShare:     [0.05, 0.10],  // C
+  rentalLeak:          [0.03, 0.06],  // D
+  rentalMonthly:       2500,          // D leve locado
+};
+
+// Curva de referência de mercado por porte (estimativa Nextfleet, ver seção 4.2 do estudo)
+const MARKET_CURVE = {
+  '1_5':     { gestao: 20, combustivel: 25, manutencao: 25, compliance: 20, motoristas: 20 },
+  '6_20':    { gestao: 30, combustivel: 35, manutencao: 32, compliance: 30, motoristas: 28 },
+  '21_50':   { gestao: 42, combustivel: 45, manutencao: 42, compliance: 40, motoristas: 38 },
+  '51_150':  { gestao: 52, combustivel: 55, manutencao: 50, compliance: 50, motoristas: 48 },
+  '151_500': { gestao: 60, combustivel: 62, manutencao: 58, compliance: 58, motoristas: 55 },
+  '500':     { gestao: 68, combustivel: 70, manutencao: 65, compliance: 66, motoristas: 62 },
+};
+const MARKET_ADJ = [
+  { when: a => R.heavy(a),    adj: { combustivel: 5, compliance: 5 } },
+  { when: a => R.rented(a),   adj: { manutencao: 8, gestao: -5 } },
+  { when: a => R.motos(a),    adj: { motoristas: -8, compliance: -8 } },
+  { when: a => R.machines(a), adj: { gestao: -5, combustivel: -5, manutencao: -5, compliance: -5, motoristas: -5 } },
+];
+const TOP25_GAP = 22; // referência = média + 22, teto 85
+
+// Índices de tecnologia e processo (pontos 0 a 3 por resposta)
+const TECH_INDEX = {
+  controle_atual: { sistema: 3, telemetria: 2, erp: 1.5, planilha: 0.5, papel: 0 },
+  man_checklist: { digital: 3, papel: 1, nao: 0 },
+  docs_venc: { sistema: 3, planilha: 1, ninguem: 0, naosei: 0 },
+  comb_forma: { cartao: 2, conveniado: 1.5, interno: 1, reembolso: 0, misto: 1 },
+  cond_comportamento: { telemetria: 3, reclamacao: 1, nao: 0 },
+  man_planos: { sistema: 3, planilha: 1.5, memoria: 0, oficina: 0.5 },
+  quem_usa: { sistema: 3, manual: 1, nao: 0 },
+};
+const PROCESS_INDEX = {
+  estrutura: { setor: 3, unico: 2, varios: 1, integrada: 1, ninguem: 0 },
+  politica: { fiscalizada: 3, escrita: 2, informal: 1, nao: 0 },
+  fechamento: { mensal: 3, trimestral: 2, pedem: 1, nao: 0 },
+  multas_indicacao: { sempre: 3, asvezes: 1, absorve: 0, naosei: 0 },
+  cond_feedback: { sempre: 3, asvezes: 2, depois: 1, nao: 0 },
+  man_tipo: { preventiva: 3, corretiva: 1, naosei: 0 },
+  comb_custo: { exato: 3, outro: 1, nao: 0 },
+  multas_conhec: { exato: 3, parcial: 2, outro: 1, nao: 0 },
+};
+
+const SOURCES = {
+  ANP:     { level: 'A', text: 'ANP, preços médios de 25 a 31/10/2026: diesel S10 R$ 7,31, gasolina R$ 6,48.' },
+  NTC:     { level: 'A', text: 'NTC&Logística / FIPE (set/2025): hora parada de caminhão R$ 90 a 92; diesel = 43 a 45% do custo do TRC.' },
+  CNT:     { level: 'A', text: 'CNT, Boletim mar/2025: custo médio de acidente sem vítima R$ 41,4 mil (rodovias federais, 2024).' },
+  CTB:     { level: 'A', text: 'CTB e Lei 14.229/2021: NIC em dobro; licenciamento vencido R$ 293,47 + remoção; Detran-SP 2026: remoção R$ 422,62, diária R$ 42,26.' },
+  DETRAN:  { level: 'A', text: 'Detran-SP (set/2026): 23,7% dos veículos da região de Campinas com licenciamento vencido.' },
+  ARVAL:   { level: 'B', text: 'Arval Barômetro de Frota e Mobilidade 2025: 49% das empresas brasileiras têm veículos conectados, 25% usam os dados.' },
+  VERIZON: { level: 'B', text: 'Verizon Connect Fleet Technology Trends 2025 (543 gestores): economia de combustível 16%, custo de acidentes -22%, 47% com ROI em menos de 1 ano.' },
+  UTFPR:   { level: 'B', text: 'UTFPR / Naevestad et al. (2023): controle de motor ocioso reduz até 10% do diesel total.' },
+  GEOTAB:  { level: 'C', text: 'Geotab / Golfleet: marcha lenta consome 1 a 2 l/h (leves) e 3 a 5 l/h (pesados); até 10% do combustível se perde sem controle.' },
+  DOE:     { level: 'C', text: 'Corretiva custa 30% a 65% a mais que preventiva (US DOE via Geotab; base de 200 frotas de fornecedor).' },
+  MULTAS:  { level: 'C', text: 'Portal Multas: 4 multas por veículo/ano, valor médio R$ 170, NIC em ~20% das multas. Infratrack: custo real 3 a 7x a multa.' },
+  EDENRED: { level: 'C', text: 'Edenred Mobilidade: ~3 h/semana (150 h/ano) consolidando planilhas em frota de 50 veículos.' },
+  TIRES:   { level: 'C', text: 'Prolog / Brazil Tires: gestão de pneus reduz o custo por km em até 25%; recapagem economiza 40 a 50%.' },
+  DEFAULT: { level: 'D', text: 'Defaults Nextfleet por tipo de veículo (km/mês, consumo, custo de manutenção, custo/km), a validar com a base de clientes.' },
 };

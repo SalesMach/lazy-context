@@ -17,21 +17,20 @@ python3 -m http.server 8080
 |---|---|
 | `index.html` | Casca da aplicação (mobile-first). |
 | `styles.css` | Tokens de marca extraídos de nextfleet.com.br (navy `#011831`, azul `#007aff`, Montserrat, botões em pílula) e todos os estilos. |
-| `data.js` | Etapas, banco de perguntas, regras de rota (`showIf`, `short`), pontuação por pilar, níveis, achados personalizados, módulos NEXTfleet usados nas recomendações e personas de teste. |
-| `app.js` | Motor do fluxo: sequência dinâmica, navegação, pontuação, página de resultado, ficha do lead e painel de validação. |
+| `data.js` | Etapas, banco de perguntas (incluindo os 3 campos numéricos opcionais), regras de rota (`showIf`, `short`), pontuação por pilar, níveis, achados, módulos NEXTfleet, personas de teste, constantes do motor de impacto, curva de mercado por porte, índices de tecnologia e processo e a lista de fontes com nível de confiança. |
+| `report.js` | Motor do relatório v2: cálculo de perdas por pilar (faixa conservadora a provável), benchmark de mercado, índices de tecnologia e processo, riscos de compliance, comparativo de indicadores, plano 30/60/90 e gráficos SVG (gauge, cascata, radar, quadrante, timeline). |
+| `app.js` | Motor do fluxo: sequência dinâmica, navegação, pontuação, orquestração do relatório, ficha do lead e painel de validação. |
 | `assets/logo-nextfleet.png` | Logo oficial, baixado do site. |
+
+## Relatório v2
+
+Seções, em ordem: capa executiva (score contra média do porte e referência, perda anual, horas manuais, riscos críticos), cascata de perdas, radar triplo, quadrante tecnologia × processo, riscos de compliance com base legal, comparativo de indicadores, achados com valor em reais, plano de 90 dias ligado aos módulos, pilares por onde começar, CTA, "Como calculamos" (fontes e níveis de confiança) e ficha do lead.
+
+As constantes e fórmulas estão em `data.js` (`IMPACT`, `VEHICLE`, `MARKET_CURVE`, `SOURCES`) e `report.js` (`impact`). O estudo que as fundamenta está em `../02-fontes-e-benchmarks.md`.
 
 ## Painel de validação
 
-O botão **Validação** (canto inferior direito) permite:
-
-- preencher o questionário com uma persona e ir direto ao resultado;
-- ver quais rotas estão ativas e quais perguntas ficaram fora da rota (riscadas);
-- pular para qualquer pergunta visível, para o início ou para o resultado.
-
-## O que muda de uma rota para outra
-
-As regras estão em `data.js` (`showIf` em cada pergunta e a flag `short` para a rota curta de 1 a 5 veículos). O resumo das rotas está em `../01-mapeamento-e-analise.md`, seção 3.3.
+O botão **Validação** permite preencher com personas e ir direto ao resultado, ver rotas ativas, perguntas fora da rota e pular para qualquer tela.
 
 ## Fora do escopo deste protótipo
 
