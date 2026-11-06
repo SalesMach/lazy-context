@@ -25,7 +25,7 @@
   }
   function visibleQuestions(a) { return QUESTIONS.filter(q => isVisible(q, a)); }
   function buildSequence(a) {
-    const seq = [{ kind: 'welcome', key: 'welcome' }];
+    const seq = [{ kind: 'welcome', key: 'welcome' }, { kind: 'contact', key: 'contact' }];
     const vis = visibleQuestions(a);
     STEPS.forEach(step => {
       const qs = vis.filter(q => q.step === step.id);
@@ -127,11 +127,12 @@
 
     let top = '';
     if (cur.kind !== 'welcome') {
-      const label = cur.kind === 'result' ? 'Resultado do diagnóstico' : cur.kind === 'intro' ? 'Maturidade da gestão de frota' : 'Etapa ' + cur.step.num + ': ' + cur.step.title;
+      const label = cur.kind === 'result' ? 'Resultado do diagnóstico' : cur.kind === 'contact' ? 'Antes de começar' : cur.kind === 'intro' ? 'Maturidade da gestão de frota' : 'Etapa ' + cur.step.num + ': ' + cur.step.title;
       top = `<header class="topbar"><div class="left"><button class="back" aria-label="Voltar" ${state.pos === 0 ? 'disabled' : ''} data-act="back">&larr;</button><div class="step-label">${esc(label)}</div></div><img class="logo" src="assets/logo-nextfleet.png" alt="NEXTfleet"></header><div class="progress"><i style="width:${pct}%"></i></div>`;
     }
     let body = '';
     if (cur.kind === 'welcome') body = renderWelcome(seq);
+    else if (cur.kind === 'contact') body = renderContact(a);
     else if (cur.kind === 'intro') body = renderIntro(cur, a);
     else if (cur.kind === 'question') body = renderQuestion(cur, a);
     else body = renderResult(a);
@@ -151,6 +152,43 @@
       <p style="font-size:14px;color:#8a93a3">As perguntas se adaptam ao seu tipo de frota. Nenhuma resposta é compartilhada sem o seu consentimento.</p>
       <div class="actions"><div class="inner"><button class="btn primary" data-act="next">Começar diagnóstico</button></div></div>
     </main>`;
+  }
+
+  function renderContact(a) {
+    const c = a.contato || {};
+    const f = (id, label, type, ph, extra) => `<label class="field"><span>${label}</span><input class="text-input" id="c_${id}" type="${type}" placeholder="${ph}" value="${esc(c[id] || '')}" ${extra || ''}><small class="err" id="e_${id}"></small></label>`;
+    return `<main class="screen contact">
+      <h1 class="q">Para quem enviamos o seu diagnóstico?</h1>
+      <p class="hint">Leva 30 segundos. O relatório completo e a simulação de economia vão para este contato.</p>
+      <form id="contactForm" novalidate>
+        ${f('nome', 'Nome', 'text', 'Seu nome completo', 'autocomplete="name"')}
+        ${f('empresa', 'Empresa', 'text', 'Nome da empresa', 'autocomplete="organization"')}
+        ${f('email', 'E-mail corporativo', 'email', 'voce@empresa.com.br', 'autocomplete="email" inputmode="email"')}
+        ${f('telefone', 'Telefone / WhatsApp', 'tel', '(11) 99999-9999', 'autocomplete="tel" inputmode="tel"')}
+        <label class="field"><span>Função</span>
+          <select class="text-input" id="c_cargo"><option value="">Selecione</option>${ROLES.map(r => `<option value="${r.v}" ${a.cargo === r.v ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}</select>
+          <small class="err" id="e_cargo"></small></label>
+        <label class="consent"><input type="checkbox" id="c_consent" ${a.consent ? 'checked' : ''}><span>Autorizo a NEXTfleet a usar estes dados para enviar o diagnóstico e entrar em contato. <a href="#" data-act="learn">Política de privacidade</a>.</span></label>
+        <small class="err" id="e_consent"></small>
+      </form>
+      <div class="actions"><div class="inner"><button class="btn primary" data-act="contact-submit">Continuar</button></div></div>
+    </main>`;
+  }
+  function submitContact() {
+    const g = id => ($app.querySelector('#c_' + id) || {}).value || '';
+    const c = { nome: g('nome').trim(), empresa: g('empresa').trim(), email: g('email').trim(), telefone: g('telefone').trim() };
+    const cargo = g('cargo'); const consent = !!($app.querySelector('#c_consent') || {}).checked;
+    const errs = {};
+    if (c.nome.length < 3) errs.nome = 'Informe seu nome.';
+    if (c.empresa.length < 2) errs.empresa = 'Informe a empresa.';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(c.email)) errs.email = 'Informe um e-mail válido.';
+    if (c.telefone.replace(/\D/g, '').length < 10) errs.telefone = 'Informe um telefone com DDD.';
+    if (!cargo) errs.cargo = 'Selecione sua função.';
+    if (!consent) errs.consent = 'Precisamos do seu consentimento para enviar o diagnóstico.';
+    ['nome', 'empresa', 'email', 'telefone', 'cargo', 'consent'].forEach(k => { const el = $app.querySelector('#e_' + k); if (el) el.textContent = errs[k] || ''; const inp = $app.querySelector('#c_' + k); if (inp) inp.classList.toggle('invalid', !!errs[k]); });
+    if (Object.keys(errs).length) { const first = $app.querySelector('.invalid'); if (first) first.focus(); return; }
+    state.answers.contato = c; state.answers.cargo = cargo; state.answers.consent = true;
+    go(+1);
   }
 
   function renderIntro(cur, a) {
@@ -246,13 +284,15 @@
 
       <details class="lead-sheet" ${state.showLead ? 'open' : ''} id="leadsheet">
         <summary><span>Ficha do lead (visão do comercial)</span><span class="tag">interno</span></summary>
+        <h4>Contato</h4>
+        <div class="kv">${a.contato ? ['nome', 'empresa', 'email', 'telefone'].map(k => `<div><b>${k}</b>${esc(a.contato[k] || '')}</div>`).join('') + `<div><b>função</b>${esc((ROLES.find(r => r.v === a.cargo) || {}).label || '')}</div><div><b>consentimento</b>${a.consent ? 'sim' : 'não'}</div>` : '<div>Não informado</div>'}</div>
         <h4>Temperatura</h4>
         <span class="temp ${lead.temp}">${esc(lead.label)} &middot; ${lead.pts} pts</span>
         <ul class="reasons">${lead.reasons.map(r => `<li>${esc(r)}</li>`).join('') || '<li>Sem sinais fortes de compra.</li>'}</ul>
         <h4>Impacto estimado (argumento de venda)</h4>
         <div class="kv"><div><b>Perda anual estimada</b>${esc(rep.range(rep.imp.total.lo, rep.imp.total.hi))}</div><div><b>Maior item</b>${rep.imp.items.length ? esc(rep.imp.items.slice().sort((x, y) => y.hi - x.hi)[0].label) : '—'}</div><div><b>Índice de tecnologia</b>${rep.idx.tech ?? '—'}</div><div><b>Índice de processo</b>${rep.idx.proc ?? '—'}</div><div><b>Quadrante</b>${esc(rep.idx.quadrant)}</div><div><b>Vs média do porte</b>${s.global - rep.mkt.global >= 0 ? '+' : ''}${s.global - rep.mkt.global} pts</div></div>
         <h4>Perfil da frota</h4>
-        <div class="kv">${['segmento', 'tamanho', 'composicao', 'propriedade', 'vinculo', 'abrangencia', 'cargo'].filter(k => a[k] !== undefined).map(k => `<div><b>${esc(QUESTIONS.find(q => q.id === k).text)}</b>${esc(labelOf(k, a[k]))}</div>`).join('')}</div>
+        <div class="kv">${['segmento', 'tamanho', 'composicao', 'propriedade', 'vinculo', 'abrangencia'].filter(k => a[k] !== undefined).map(k => `<div><b>${esc(QUESTIONS.find(q => q.id === k).text)}</b>${esc(labelOf(k, a[k]))}</div>`).join('')}</div>
         <h4>Números informados</h4>
         <div class="kv">${[['km_mes', 'Km por veículo por mês'], ['gasto_comb', 'Combustível (R$ por mês)'], ['gasto_manut', 'Manutenção (R$ por mês)']].map(([k, l]) => `<div><b>${l}</b>${a[k] ? esc(a[k]) : 'não informado'}</div>`).join('')}</div>
         <h4>Rotas percorridas</h4>
@@ -309,7 +349,7 @@
       <h5>Personas (preenchem tudo e vão ao resultado)</h5>
       <div class="row">${Object.keys(PERSONAS).map(p => `<button class="mini" data-act="persona" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div>
       <h5>Ações</h5>
-      <div class="row"><button class="mini" data-act="jump" data-key="welcome">Início</button><button class="mini" data-act="jump" data-key="result">Resultado</button><button class="mini" data-act="restart">Limpar respostas</button></div>
+      <div class="row"><button class="mini" data-act="jump" data-key="welcome">Início</button><button class="mini" data-act="jump" data-key="contact">Contato</button><button class="mini" data-act="jump" data-key="result">Resultado</button><button class="mini" data-act="restart">Limpar respostas</button></div>
       <h5>Rotas ativas</h5>
       <div class="row">${routes.map(r => `<span class="chip">${esc(r)}</span>`).join('') || '<span class="chip">Fluxo padrão</span>'}</div>
       <h5>Perguntas (${visibleQuestions(a).length} visíveis de ${QUESTIONS.length}) · riscadas = fora da rota</h5>
@@ -326,6 +366,7 @@
         const act = el.dataset.act;
         if (act === 'learn') { ev.preventDefault(); return; }
         if (act === 'next') return go(+1);
+        if (act === 'contact-submit') return submitContact();
         if (act === 'back') return go(-1);
         if (act === 'choose') return choose(el.dataset.q, el.dataset.v);
         if (act === 'restart') { state.answers = {}; state.pos = 0; return render(); }
@@ -366,6 +407,7 @@
   function go(delta) {
     const seq = buildSequence(state.answers);
     const cur = seq[state.pos];
+    if (delta > 0 && cur.kind === 'contact' && !state.answers.consent) return submitContact();
     if (delta > 0 && cur.kind === 'question' && cur.q.type !== 'text' && cur.q.type !== 'number' && !cur.q.optional) {
       const v = state.answers[cur.q.id];
       if (v === undefined || (Array.isArray(v) && !v.length)) return;

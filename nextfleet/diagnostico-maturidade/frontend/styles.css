@@ -216,3 +216,14 @@ table.cmp td.ok{color:var(--nf-ok);font-weight:700} table.cmp td.warn{color:#c47
 .lvl{flex:0 0 22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;background:#8a93a3}
 .lvl.A{background:var(--nf-ok)} .lvl.B{background:var(--nf-blue)} .lvl.C{background:var(--nf-warn)} .lvl.D{background:#8a93a3}
 .routes span.red{border-color:var(--nf-bad);color:var(--nf-bad)} .routes span.yellow{border-color:var(--nf-warn);color:#c47a05}
+
+/* ===== Identificação ===== */
+.contact form{display:flex;flex-direction:column;gap:14px;margin-top:4px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field > span{font-size:13px;font-weight:600;color:var(--nf-navy)}
+.field .text-input{padding:14px 16px;font-size:16px}
+select.text-input{appearance:none;background:var(--nf-card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23011831' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 16px center/16px}
+.text-input.invalid{border-color:var(--nf-bad);background:#fff5f5}
+.err{display:block;min-height:14px;font-size:12px;color:var(--nf-bad)}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45;color:#2f3b50;margin-top:4px}
+.consent input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--nf-blue);flex:0 0 20px}

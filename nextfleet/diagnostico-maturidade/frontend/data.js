@@ -135,15 +135,6 @@ const QUESTIONS = [
       { v: 'regional', label: 'Regional, dentro de um ou poucos estados' },
       { v: 'nacional', label: 'Nacional' },
     ] },
-  { id: 'cargo', step: 'perfil', text: 'Qual é o seu papel na empresa?', type: 'single',
-    options: [
-      { v: 'dono',       label: 'Dono, sócio ou diretor' },
-      { v: 'gestor',     label: 'Gestor de frota' },
-      { v: 'financeiro', label: 'Financeiro ou administrativo' },
-      { v: 'operacoes',  label: 'Operações ou logística' },
-      { v: 'outro',      label: 'Outro' },
-    ] },
-
   // ---------- 02 GESTÃO E CONTROLE ----------
   { id: 'estrutura', step: 'gestao', pillar: 'gestao', text: 'Qual é a estrutura atual de gestão da sua frota?', type: 'single',
     options: [
@@ -562,8 +553,18 @@ const LABELS = {
 };
 
 // Personas para validação rápida (preenchem o questionário inteiro)
+// Opções de função na tela de identificação (alimenta a variável `cargo` usada nas rotas)
+const ROLES = [
+  { v: 'dono',       label: 'Dono, sócio ou diretor' },
+  { v: 'gestor',     label: 'Gestor de frota' },
+  { v: 'financeiro', label: 'Financeiro ou administrativo' },
+  { v: 'operacoes',  label: 'Operações ou logística' },
+  { v: 'outro',      label: 'Outro' },
+];
+
 const PERSONAS = {
   'PME leve, planilha': {
+    contato: { nome: 'Carla Menezes', email: 'carla@servtec.com.br', telefone: '(11) 98877-1234', empresa: 'ServTec Instalações' }, consent: true,
     segmento: 'servicos', tamanho: '6_20', composicao: ['leves', 'vans'], propriedade: 'propria', vinculo: 'clt', abrangencia: 'urbana', cargo: 'dono',
     estrutura: 'integrada', controle_atual: 'planilha', tempo_consolidando: 'mais3', indicadores: ['nenhum'], politica: 'informal', fechamento: 'pedem',
     comb_controle: 'basico', comb_forma: 'reembolso', comb_kml: 'nao', comb_desvio: 'impossivel', comb_custo: 'outro',
@@ -574,6 +575,7 @@ const PERSONAS = {
     maior_gasto: 'combustivel', maior_dor: 'gasto_onde', motivo_agora: 'custo', prazo: '3m', decisor: 'eu',
   },
   'Transportadora pesada, reativa': {
+    contato: { nome: 'Roberto Lima', email: 'roberto.lima@translima.com.br', telefone: '(41) 99911-2200', empresa: 'TransLima Cargas' }, consent: true,
     segmento: 'transporte', tamanho: '51_150', composicao: ['pesados', 'carretas', 'vuc'], propriedade: 'maioria', vinculo: 'misto', abrangencia: 'nacional', cargo: 'gestor',
     estrutura: 'unico', controle_atual: 'telemetria', sistema_falta: 'fornecedores', indicadores: ['consumo'], politica: 'escrita', fechamento: 'trimestral',
     comb_controle: 'basico', comb_forma: 'cartao', comb_kml: 'geral', comb_desvio: 'nunca', comb_custo: 'exato', comb_ocioso: 'sim',
@@ -584,6 +586,7 @@ const PERSONAS = {
     maior_gasto: 'combustivel', maior_dor: 'corretiva', motivo_agora: 'custo', prazo: 'avaliando', decisor: 'diretoria', sistema_nome: 'Rastreador + planilhas',
   },
   'Serviços de campo, frota locada': {
+    contato: { nome: 'Fernanda Souza', email: 'fernanda.souza@redefibra.com', telefone: '(21) 97777-4040', empresa: 'Rede Fibra Telecom' }, consent: true,
     segmento: 'infra', tamanho: '151_500', composicao: ['leves', 'vans', 'vuc'], propriedade: 'locada', vinculo: 'clt', abrangencia: 'regional', cargo: 'financeiro',
     estrutura: 'setor', controle_atual: 'erp', indicadores: ['custo_veiculo', 'multas_cond'], politica: 'escrita', fechamento: 'mensal',
     comb_controle: 'completo', comb_forma: 'cartao', comb_kml: 'geral', comb_desvio: 'raro', comb_custo: 'exato',
@@ -593,6 +596,7 @@ const PERSONAS = {
     maior_gasto: 'locacao', maior_dor: 'prazos', motivo_agora: 'auditoria', prazo: '6_12m', decisor: 'diretoria',
   },
   'Frota madura com sistema': {
+    contato: { nome: 'Marcos Andrade', email: 'marcos@distribel.com.br', telefone: '(51) 98123-5566', empresa: 'Distribel Distribuidora' }, consent: true,
     segmento: 'distribuicao', tamanho: '21_50', composicao: ['vuc', 'vans'], propriedade: 'propria', vinculo: 'clt', abrangencia: 'regional', cargo: 'gestor',
     estrutura: 'setor', controle_atual: 'sistema', sistema_falta: 'financeiro', indicadores: ['custo_km', 'custo_veiculo', 'consumo', 'disponibilidade'], politica: 'fiscalizada', fechamento: 'mensal',
     comb_controle: 'completo', comb_forma: 'conveniado', comb_kml: 'veiculo', comb_desvio: 'raro', comb_custo: 'exato',
@@ -602,6 +606,7 @@ const PERSONAS = {
     maior_gasto: 'manutencao', maior_dor: 'sistema', motivo_agora: 'troca', prazo: 'avaliando', decisor: 'eu', sistema_nome: 'Sistema de frota concorrente',
   },
   'Micro frota (rota curta)': {
+    contato: { nome: 'João Pereira', email: 'joao@jpservicos.com', telefone: '(31) 99666-7788', empresa: 'JP Serviços' }, consent: true,
     segmento: 'outro', tamanho: '1_5', composicao: ['leves'], propriedade: 'propria', cargo: 'dono',
     estrutura: 'unico', controle_atual: 'papel', tempo_consolidando: 'nao', politica: 'nao',
     comb_controle: 'nenhum', comb_forma: 'reembolso', comb_percepcao: 'certeza',
