@@ -382,6 +382,10 @@
       txt.addEventListener('input', () => { const seq = buildSequence(state.answers); const cur = seq[state.pos]; state.answers[cur.q.id] = txt.value; const b = $app.querySelector('.actions .btn.primary'); if (b && cur.q.optional) b.textContent = txt.value.trim() ? 'Continuar' : 'Pular'; });
       txt.addEventListener('keydown', e => { if (e.key === 'Enter') go(+1); });
     }
+    $app.querySelectorAll('#contactForm input, #contactForm select').forEach(el => {
+      el.addEventListener('input', () => { el.classList.remove('invalid'); const k = el.id.replace('c_', ''); const e = $app.querySelector('#e_' + k); if (e) e.textContent = ''; });
+      el.addEventListener('change', () => { el.classList.remove('invalid'); const k = el.id.replace('c_', ''); const e = $app.querySelector('#e_' + k); if (e) e.textContent = ''; });
+    });
     const ls = $app.querySelector('#leadsheet');
     if (ls) ls.addEventListener('toggle', () => { state.showLead = ls.open; });
   }
